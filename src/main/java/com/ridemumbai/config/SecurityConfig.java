@@ -3,6 +3,7 @@ package com.ridemumbai.config;
 import lombok.RequiredArgsConstructor; // Add this import
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod; // <-- IMPORT THIS
 import org.springframework.security.authentication.AuthenticationProvider; // Add this import
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -26,7 +27,15 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
+                // Allow all OPTIONS requests (for CORS preflight)
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // <-- ADD THIS LINE
+                // Allow our public endpoints
                 .requestMatchers("/api/health", "/api/auth/**").permitAll()
+                // Allow authenticated users to get their details
+                .requestMatchers("/api/users/me").authenticated() // <-- ADD THIS LINE
+                // Secure all admin endpoints
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                // Secure all other endpoints
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
