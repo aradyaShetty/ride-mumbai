@@ -23,11 +23,14 @@ public class RoutePlannerService {
     // ScheduleRepository might be needed later for time estimates
 
     // --- Mock Data Representation ---
-    // We'll represent the network as an adjacency list: Map<StationName, List<NeighborInfo>>
-    // NeighborInfo could be a simple class/record holding neighbor name and travel time/distance.
+    // We'll represent the network as an adjacency list: Map<StationName,
+    // List<NeighborInfo>>
+    // NeighborInfo could be a simple class/record holding neighbor name and travel
+    // time/distance.
     // For now, let's just store direct routes from the RouteRepository.
 
-    // TODO: In a real app, load this from DB/Config. For now, we use RouteRepository directly.
+    // TODO: In a real app, load this from DB/Config. For now, we use
+    // RouteRepository directly.
     // private Map<String, List<Route>> adjacencyList = new HashMap<>();
 
     // Central graph representation: Map Station Name to Node object
@@ -94,7 +97,8 @@ public class RoutePlannerService {
         StationNode source = metroGraph.get(sourceName);
         StationNode destination = metroGraph.get(destinationName);
 
-        if (source == null || destination == null) return Optional.empty();
+        if (source == null || destination == null)
+            return Optional.empty();
 
         distances.put(source, 0.0);
         priorityQueue.add(source);
@@ -108,7 +112,8 @@ public class RoutePlannerService {
             StationNode current = priorityQueue.poll();
 
             // Stop if we found the destination
-            if (current.equals(destination)) break;
+            if (current.equals(destination))
+                break;
 
             // Iterate over neighbors (edges)
             for (Edge edge : current.getNeighbors()) {
@@ -157,10 +162,12 @@ public class RoutePlannerService {
 
     // --- Helper Methods (Placeholder, Matches Sequence Diagram) ---
     public List<String> getStationList() {
-         // Simulates fetching all station names
-         log.info("Fetching station list (placeholder)");
-         // In real app: return stationRepository.findAll().stream().map(Station::getName).toList();
-         return List.of("Andheri", "Ghatkopar", "Marol Naka", "Versova", "DN Nagar"); // Mock list
+        log.info("Fetching full station list from database");
+        // Fetch all stations from the repository, map them to their names, and collect
+        // as a list
+        return stationRepository.findAll().stream()
+                .map(Station::getName) // Assumes you have 'import com.ridemumbai.model.Station;'
+                .toList();
     }
 
     public List<Route> findAlternativeRoutes(String source, String destination) {
@@ -177,7 +184,8 @@ public class RoutePlannerService {
 
     public List<String> getTransferPoints(Route route) {
         log.info("Getting transfer points (placeholder) for route ID: {}", route.getRouteId());
-        // TODO: Implement logic to identify transfer stations within a complex calculated route
+        // TODO: Implement logic to identify transfer stations within a complex
+        // calculated route
         return Collections.emptyList(); // Not implemented yet
     }
 }
