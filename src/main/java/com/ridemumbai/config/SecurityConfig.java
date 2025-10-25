@@ -33,6 +33,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/health", "/api/auth/**").permitAll()
                 // Allow authenticated users to get their details
                 .requestMatchers("/api/users/me").authenticated() // <-- ADD THIS LINE
+                // Only users with ROLE_COMMUTER can access commuter routes
+                .requestMatchers("/api/commuter/**").hasRole("COMMUTER")
                 // Secure all admin endpoints
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // Secure all other endpoints
