@@ -20,22 +20,25 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
 
     public AuthResponse register(RegisterRequest request) {
-        if (userRepository.findByUsername(request.getUsername()).isPresent()) {
-            throw new IllegalArgumentException("Username already exists");
+        // Check if user already exists
+        if (userRepository.findByUsername(request.getEmail()).isPresent()) { // <-- Use request.getName()
+             throw new IllegalArgumentException("Username already exists");
         }
 
         var user = Commuter.builder()
-                .username(request.getUsername())
+                .username(request.getEmail()) // <-- Use request.getName()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(Role.ROLE_COMMUTER)
-                .walletBalance(0.0)
+                .walletBalance(100.0) // We set this in DataInitializer, but good default
                 .build();
-
+        
         userRepository.save(user);
 
         var jwtToken = jwtService.generateToken(user);
-        return AuthResponse.builder().token(jwtToken).build();
+        return AuthResponse.builder()
+                .token(jwtToken)
+                .build();
     }
 
     public AuthResponse login(AuthRequest request) {

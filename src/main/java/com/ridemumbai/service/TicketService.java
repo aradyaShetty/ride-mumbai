@@ -2,6 +2,7 @@ package com.ridemumbai.service;
 
 import com.ridemumbai.model.*; // Import all models
 import com.ridemumbai.repository.*; // Import all repositories
+import com.ridemumbai.dto.BookTicketRequest; // Import the DTO
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -28,8 +29,9 @@ public class TicketService {
 
     // --- Core Ticket Booking Logic (Placeholder) ---
     @Transactional // Ensures all DB operations succeed or fail together
-    public Optional<Ticket> bookTicket(Long routeId, String ticketType, String paymentMethod) {
-        log.info("Attempting to book ticket for routeId: {}, type: {}", routeId, ticketType);
+    public Optional<Ticket> bookTicket(BookTicketRequest request) { // <-- Use DTO
+        log.info("Attempting to book ticket for route: {} -> {}", request.getStartStationName(),
+                request.getEndStationName());
 
         // 1. Get Authenticated User (Commuter)
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -37,7 +39,6 @@ public class TicketService {
         User currentUser = userRepository.findByUsername(currentUsername)
                 .orElseThrow(() -> new IllegalStateException("Authenticated user not found"));
 
-        // Ensure the user is a Commuter (or handle appropriately if Admins can book)
         if (!(currentUser instanceof Commuter)) {
             log.error("User {} is not a Commuter, cannot book ticket.", currentUsername);
             return Optional.empty(); // Or throw specific exception
@@ -45,39 +46,49 @@ public class TicketService {
         Commuter commuter = (Commuter) currentUser;
         Long commuterId = commuter.getUserId();
 
-        // 2. Validate Route
-        Optional<Route> routeOpt = routeRepository.findById(routeId);
-        if (routeOpt.isEmpty()) {
-            log.error("Invalid routeId {} provided for booking.", routeId);
-            return Optional.empty(); // Or throw exception
-        }
-        Route route = routeOpt.get();
+        // 2. Find or Create Persistent Route
+        // Check if a route for this exact start/end + distance already exists
+        Route route = routeRepository.findByStartStationNameAndEndStationName(
+                request.getStartStationName(),
+                request.getEndStationName()).stream()
+                .filter(r -> r.getDistance().equals(request.getDistance())) // Match distance too
+                .findFirst()
+                .orElseGet(() -> {
+                    // If not, create and save a new one
+                    log.info("No persistent route found. Creating new dynamic route for {} -> {}.",
+                            request.getStartStationName(), request.getEndStationName());
+                    Route newRoute = Route.builder()
+                            .startStationName(request.getStartStationName())
+                            .endStationName(request.getEndStationName())
+                            .distance(request.getDistance())
+                            .build();
+                    return routeRepository.save(newRoute);
+                });
 
-        // 3. Calculate Fare (using RoutePlannerService)
-        Double fare = routePlannerService.calculateFare(route);
+        // 3. Calculate Fare (using RoutePlannerService, now redundant but good for
+        // validation)
+        Double fare = routePlannerService.calculateFare(route); // Use the (now persistent) route
         log.info("Calculated fare: {}", fare);
 
-        // 4. Process Payment (Simplified Placeholder)
-        // TODO: Integrate with actual payment gateway (e.g., Razorpay, Stripe)
-        // This involves redirecting user, handling callbacks, verifying payment status
-        boolean paymentSuccess = processMockPayment(commuter, fare, paymentMethod);
+        // 4. Process Payment
+        boolean paymentSuccess = processMockPayment(commuter, fare, request.getPaymentMethod());
 
         if (!paymentSuccess) {
-            log.error("Payment failed for user {}, amount {}", commuterId, fare);
-            // Need to save payment attempt with FAILED status
-            savePaymentRecord(null, fare, paymentMethod, "FAILED", "MOCK_FAIL_" + UUID.randomUUID());
-            return Optional.empty(); // Or throw PaymentFailedException
+            log.warn("Payment failed for user {}, amount {}", commuterId, fare);
+            savePaymentRecord(null, fare, request.getPaymentMethod(), "FAILED", "MOCK_FAIL_" + UUID.randomUUID());
+            // Throw a specific exception to be caught by the controller
+            throw new IllegalStateException("Insufficient wallet balance.");
         }
         log.info("Mock payment successful.");
 
         // 5. Create Ticket
-        String qrCodeData = generateQRCodeData(commuterId, routeId, LocalDateTime.now());
+        String qrCodeData = generateQRCodeData(commuterId, route.getRouteId(), LocalDateTime.now());
         Ticket newTicket = Ticket.builder()
                 .commuterId(commuterId)
-                .routeId(routeId)
+                .routeId(route.getRouteId()) // Use the persistent route ID
                 .fare(fare)
                 .bookingDateTime(LocalDateTime.now())
-                .ticketType(ticketType)
+                .ticketType(request.getTicketType())
                 .qrCodeData(qrCodeData)
                 .status("BOOKED")
                 .build();
@@ -85,17 +96,14 @@ public class TicketService {
         log.info("Ticket created with ID: {}", savedTicket.getTicketId());
 
         // 6. Record Successful Payment
-        Payment paymentRecord = savePaymentRecord(savedTicket.getTicketId(), fare, paymentMethod, "SUCCESS",
-                "MOCK_TXN_" + UUID.randomUUID());
+        Payment paymentRecord = savePaymentRecord(savedTicket.getTicketId(), fare, request.getPaymentMethod(),
+                "SUCCESS", "MOCK_TXN_" + UUID.randomUUID());
         log.info("Payment recorded with ID: {}", paymentRecord.getPaymentId());
 
-        // 7. Add to Travel History (Optional - might happen when ticket is USED)
-        // For simplicity, let's add it now, assuming booking = start of potential
-        // travel
+        // 7. Add to Travel History
         addJourneyToHistory(commuterId, savedTicket, route);
         log.info("Journey added to travel history for user {}", commuterId);
 
-        // 8. Return the created ticket
         return Optional.of(savedTicket);
     }
 
@@ -188,7 +196,7 @@ public class TicketService {
 
         User user = userRepository.findByUsername(username)
                 .orElse(null);
-        
+
         // 1. Validate Ownership and Status
         if (user == null || !user.getUserId().equals(ticket.getCommuterId())) {
             return false;
@@ -204,13 +212,13 @@ public class TicketService {
         if (payment != null) {
             // Find Commuter to update balance
             Commuter commuter = (Commuter) userRepository.findById(user.getUserId()).get();
-            
+
             // Simplified refund: If paid by wallet, add back the balance
             if ("WALLET".equalsIgnoreCase(payment.getPaymentMethod())) {
                 commuter.setWalletBalance(commuter.getWalletBalance() + payment.getAmount());
                 userRepository.save(commuter);
             }
-            
+
             // Mark payment as refunded
             payment.setStatus("REFUNDED");
             paymentRepository.save(payment);

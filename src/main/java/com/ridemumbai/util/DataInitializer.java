@@ -46,20 +46,27 @@ public class DataInitializer implements CommandLineRunner {
             Route r1 = Route.builder().startStationName("Andheri").endStationName("WEH").distance(1.5).build();
             Route r2 = Route.builder().startStationName("WEH").endStationName("Andheri").distance(1.5).build();
             // ... (add all other routes R3 to R16 as defined in Task 4) ...
-             Route r3 = Route.builder().startStationName("WEH").endStationName("Chakala").distance(1.0).build();
-             Route r4 = Route.builder().startStationName("Chakala").endStationName("WEH").distance(1.0).build();
-             Route r5 = Route.builder().startStationName("Chakala").endStationName("Airport Road").distance(0.8).build();
-             Route r6 = Route.builder().startStationName("Airport Road").endStationName("Chakala").distance(0.8).build();
-             Route r7 = Route.builder().startStationName("Airport Road").endStationName("Marol Naka").distance(0.7).build();
-             Route r8 = Route.builder().startStationName("Marol Naka").endStationName("Airport Road").distance(0.7).build();
-             Route r9 = Route.builder().startStationName("Marol Naka").endStationName("Saki Naka").distance(1.1).build();
-             Route r10 = Route.builder().startStationName("Saki Naka").endStationName("Marol Naka").distance(1.1).build();
-             Route r11 = Route.builder().startStationName("Saki Naka").endStationName("Asalpha").distance(1.2).build();
-             Route r12 = Route.builder().startStationName("Asalpha").endStationName("Saki Naka").distance(1.2).build();
-             Route r13 = Route.builder().startStationName("Asalpha").endStationName("Jagruti Nagar").distance(1.0).build();
-             Route r14 = Route.builder().startStationName("Jagruti Nagar").endStationName("Asalpha").distance(1.0).build();
-             Route r15 = Route.builder().startStationName("Jagruti Nagar").endStationName("Ghatkopar").distance(1.3).build();
-             Route r16 = Route.builder().startStationName("Ghatkopar").endStationName("Jagruti Nagar").distance(1.3).build();
+            Route r3 = Route.builder().startStationName("WEH").endStationName("Chakala").distance(1.0).build();
+            Route r4 = Route.builder().startStationName("Chakala").endStationName("WEH").distance(1.0).build();
+            Route r5 = Route.builder().startStationName("Chakala").endStationName("Airport Road").distance(0.8).build();
+            Route r6 = Route.builder().startStationName("Airport Road").endStationName("Chakala").distance(0.8).build();
+            Route r7 = Route.builder().startStationName("Airport Road").endStationName("Marol Naka").distance(0.7)
+                    .build();
+            Route r8 = Route.builder().startStationName("Marol Naka").endStationName("Airport Road").distance(0.7)
+                    .build();
+            Route r9 = Route.builder().startStationName("Marol Naka").endStationName("Saki Naka").distance(1.1).build();
+            Route r10 = Route.builder().startStationName("Saki Naka").endStationName("Marol Naka").distance(1.1)
+                    .build();
+            Route r11 = Route.builder().startStationName("Saki Naka").endStationName("Asalpha").distance(1.2).build();
+            Route r12 = Route.builder().startStationName("Asalpha").endStationName("Saki Naka").distance(1.2).build();
+            Route r13 = Route.builder().startStationName("Asalpha").endStationName("Jagruti Nagar").distance(1.0)
+                    .build();
+            Route r14 = Route.builder().startStationName("Jagruti Nagar").endStationName("Asalpha").distance(1.0)
+                    .build();
+            Route r15 = Route.builder().startStationName("Jagruti Nagar").endStationName("Ghatkopar").distance(1.3)
+                    .build();
+            Route r16 = Route.builder().startStationName("Ghatkopar").endStationName("Jagruti Nagar").distance(1.3)
+                    .build();
             List<Route> routes = List.of(r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16);
             routeRepository.saveAll(routes);
             log.info("Saved {} mock routes.", routes.size());
@@ -69,11 +76,10 @@ public class DataInitializer implements CommandLineRunner {
 
         // --- Initialize Users if none exist ---
         if (userRepository.count() == 0) {
-             log.info("No existing user data found. Initializing mock Admin and Commuter users...");
+            log.info("No existing user data found. Initializing mock Admin and Commuter users...");
             User admin = Admin.builder()
-                    .username("admin_user")
+                    .username("admin@ridemumbai.com") // <-- USE EMAIL AS USERNAME
                     .email("admin@ridemumbai.com")
-                    // Use PasswordEncoder bean to hash passwords
                     .password(passwordEncoder.encode("admin123"))
                     .role(Role.ROLE_ADMIN)
                     .adminLevel(1)
@@ -82,11 +88,11 @@ public class DataInitializer implements CommandLineRunner {
                     .build();
 
             Commuter initialCommuter = Commuter.builder()
-                    .username("commuter1")
+                    .username("commuter1@ridemumbai.com") // <-- USE EMAIL AS USERNAME
                     .email("commuter1@ridemumbai.com")
                     .password(passwordEncoder.encode("password123"))
                     .role(Role.ROLE_COMMUTER)
-                    .walletBalance(100.0) // Set initial balance
+                    .walletBalance(100.0)
                     .phoneNumber("9876543210")
                     .membershipType("STANDARD")
                     .build();
@@ -94,7 +100,7 @@ public class DataInitializer implements CommandLineRunner {
             userRepository.saveAll(List.of(admin, initialCommuter));
             log.info("Saved initial Admin and Commuter data.");
         } else {
-             log.info("User data already exists. Skipping user initialization.");
+            log.info("User data already exists. Skipping user initialization.");
         }
     }
 }
