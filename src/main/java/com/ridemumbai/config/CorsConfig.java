@@ -19,6 +19,7 @@ public class CorsConfig {
                         "http://localhost:5173" // for local dev
                     )
                     .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                    .allowedHeaders("*")
                     .allowCredentials(true);
             }
         };
